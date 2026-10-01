@@ -1,30 +1,87 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://evidencecapsule.org/schema/1.0.0-alpha.1",
+  "$id": "https://evidencecapsule.org/schema/1.0.0-alpha.2",
   "title": "Evidence Capsule",
   "type": "object",
   "required": ["format", "capsule_id", "revision", "subject", "claims", "evidence", "policy_results", "integrity"],
   "properties": {
-    "format": {"const": "evidence-capsule/1.0.0-alpha.1"},
+    "format": {"enum": ["evidence-capsule/1.0.0-alpha.1", "evidence-capsule/1.0.0-alpha.2"]},
     "capsule_id": {"type": "string", "minLength": 1},
     "revision": {"type": "integer", "minimum": 1},
     "previous_revision_hash": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$"},
     "subject": {"type": "string", "minLength": 1},
     "claims": {"type": "array", "items": {"type": "object"}},
-    "evidence": {"type": "array", "items": {"type": "object"}},
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {"reference": {"$ref": "#/$defs/privateReference"}},
+        "additionalProperties": true
+      }
+    },
     "assumptions": {"type": "array", "items": {"type": "object"}, "default": []},
     "contradictions": {"type": "array", "items": {"type": "object"}, "default": []},
     "model_outputs": {"type": "array", "items": {"type": "object"}, "default": []},
     "policy_results": {"type": "array", "items": {"type": "object"}},
     "provenance": {"type": "object", "default": {}},
-    "signatures": {"type": "array", "items": {"type": "object"}, "default": []},
+    "signatures": {"type": "array", "items": {"$ref": "#/$defs/signature"}, "default": []},
+    "approvals": {"type": "array", "items": {"$ref": "#/$defs/approval"}, "default": []},
     "external_anchors": {"type": "array", "items": {"type": "object"}, "default": []},
+    "integrity": {"$ref": "#/$defs/integrity"}
+  },
+  "$defs": {
     "integrity": {
       "type": "object",
       "required": ["algorithm", "content_hash"],
       "properties": {
         "algorithm": {"const": "sha256"},
         "content_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+      },
+      "additionalProperties": false
+    },
+    "privateReference": {
+      "type": "object",
+      "required": ["uri", "content_hash", "media_type", "disclosure"],
+      "properties": {
+        "uri": {"type": "string", "minLength": 3},
+        "content_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "media_type": {"type": "string", "minLength": 3},
+        "disclosure": {"enum": ["private", "restricted", "public"]},
+        "access_hint": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "signature": {
+      "type": "object",
+      "required": ["profile", "algorithm", "role", "signer", "key_id", "public_key", "signed_at", "content_hash", "signature"],
+      "properties": {
+        "profile": {"const": "evidence-capsule-signature/1"},
+        "algorithm": {"const": "Ed25519"},
+        "role": {"type": "string", "minLength": 1},
+        "signer": {"type": "string", "minLength": 1},
+        "key_id": {"type": "string", "minLength": 1},
+        "public_key": {"type": "string", "contentEncoding": "base64"},
+        "signed_at": {"type": "string", "format": "date-time"},
+        "content_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "signature": {"type": "string", "contentEncoding": "base64"}
+      },
+      "additionalProperties": false
+    },
+    "approval": {
+      "type": "object",
+      "required": ["profile", "algorithm", "decision", "reviewer", "key_id", "public_key", "signed_at", "content_hash", "revision", "signature"],
+      "properties": {
+        "profile": {"const": "evidence-capsule-approval/1"},
+        "algorithm": {"const": "Ed25519"},
+        "decision": {"enum": ["approved", "rejected", "needs_changes"]},
+        "reviewer": {"type": "string", "minLength": 1},
+        "key_id": {"type": "string", "minLength": 1},
+        "public_key": {"type": "string", "contentEncoding": "base64"},
+        "signed_at": {"type": "string", "format": "date-time"},
+        "content_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "revision": {"type": "integer", "minimum": 1},
+        "note": {"type": "string"},
+        "signature": {"type": "string", "contentEncoding": "base64"}
       },
       "additionalProperties": false
     }
