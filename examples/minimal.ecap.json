@@ -1,0 +1,26 @@
+{
+  "assumptions": [],
+  "capsule_id": "example:minimal",
+  "claims": [
+    {"id": "claim:1", "statement": "The example capsule passes its integrity check.", "status": "supported"}
+  ],
+  "contradictions": [],
+  "evidence": [
+    {"id": "evidence:1", "kind": "test-vector", "supports": ["claim:1"]}
+  ],
+  "external_anchors": [],
+  "format": "evidence-capsule/1.0.0-alpha.1",
+  "integrity": {
+    "algorithm": "sha256",
+    "content_hash": "sha256:5e8010fb29b6807a4dca7e536bf31a091bc0ec139274dd4ab52bf55b1ed089c3"
+  },
+  "model_outputs": [],
+  "policy_results": [
+    {"policy": "example-integrity", "result": "pass"}
+  ],
+  "previous_revision_hash": null,
+  "provenance": {"producer": "evidence-capsule test suite"},
+  "revision": 1,
+  "signatures": [],
+  "subject": "Minimal Evidence Capsule"
+}
