@@ -1,0 +1,74 @@
+{
+  "approvals": [
+    {
+      "algorithm": "Ed25519",
+      "content_hash": "sha256:85317bfd2a035fb54e0ef8f373f19a4a83a0f9c8b08cedfd06837f2d7d4774de",
+      "decision": "approved",
+      "key_id": "example-key",
+      "note": "Example approval",
+      "profile": "evidence-capsule-approval/1",
+      "public_key": "A6EHv/POEL4dcN0Y50vAmWfk1jCbpQ1fHdyGZBJVMbg=",
+      "reviewer": "example:reviewer",
+      "revision": 1,
+      "signature": "0dNgquGScTpNbPf/2vI+1Jmaa6xdF5BpBBC6cCeg8rVlT9PQIDnsDVk8hrAE5RCCDXTQd4uE1uxGtrRr0888Ag==",
+      "signed_at": "2026-10-01T20:01:00Z"
+    }
+  ],
+  "assumptions": [],
+  "capsule_id": "example:signed-alpha2",
+  "claims": [
+    {
+      "id": "claim:1",
+      "statement": "The report supports the decision.",
+      "status": "supported"
+    }
+  ],
+  "contradictions": [],
+  "evidence": [
+    {
+      "id": "evidence:1",
+      "kind": "private-reference",
+      "reference": {
+        "content_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "disclosure": "restricted",
+        "media_type": "application/pdf",
+        "uri": "urn:customer:report:7"
+      },
+      "supports": [
+        "claim:1"
+      ]
+    }
+  ],
+  "external_anchors": [],
+  "format": "evidence-capsule/1.0.0-alpha.2",
+  "integrity": {
+    "algorithm": "sha256",
+    "content_hash": "sha256:85317bfd2a035fb54e0ef8f373f19a4a83a0f9c8b08cedfd06837f2d7d4774de"
+  },
+  "model_outputs": [],
+  "policy_results": [
+    {
+      "policy": "reviewed-evidence",
+      "result": "pass"
+    }
+  ],
+  "previous_revision_hash": null,
+  "provenance": {
+    "producer": "evidence-capsule test suite"
+  },
+  "revision": 1,
+  "signatures": [
+    {
+      "algorithm": "Ed25519",
+      "content_hash": "sha256:85317bfd2a035fb54e0ef8f373f19a4a83a0f9c8b08cedfd06837f2d7d4774de",
+      "key_id": "example-key",
+      "profile": "evidence-capsule-signature/1",
+      "public_key": "A6EHv/POEL4dcN0Y50vAmWfk1jCbpQ1fHdyGZBJVMbg=",
+      "role": "author",
+      "signature": "EMMQmZnAB6UK30bSh3yoCtPD+jNWy0+/yBi/rI/PNg/6I9tEErI0Ighu5QdQn1B6u94/F9IOi+3fnOYFUwXHDQ==",
+      "signed_at": "2026-10-01T20:00:00Z",
+      "signer": "example:author"
+    }
+  ],
+  "subject": "Signed Evidence Capsule"
+}
