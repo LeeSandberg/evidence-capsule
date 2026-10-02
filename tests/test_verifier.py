@@ -20,6 +20,12 @@ def test_ed25519_matches_rfc8032_vector_1():
     assert not module.verify_ed25519(public_key, b"changed", signature)
 
 
+def test_ed25519_rejects_small_order_identity_forgery():
+    identity = b"\x01" + b"\x00" * 31
+    forged_signature = identity + b"\x00" * 32
+    assert not module.verify_ed25519(identity, b"any message", forged_signature)
+
+
 def test_example_is_valid():
     capsule = json.loads((ROOT / "examples/minimal.ecap.json").read_text())
     assert module.verify(capsule) == []
