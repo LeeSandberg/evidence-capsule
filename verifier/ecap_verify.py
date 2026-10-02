@@ -98,6 +98,10 @@ def verify_ed25519(public_key: bytes, message: bytes, signature: bytes) -> bool:
         if scalar >= L:
             return False
         public, r_point = _decode_point(public_key), _decode_point(r_encoded)
+        # Reject identity and other small-order encodings that can make a
+        # cofactored equation true without possession of a private key.
+        if _multiply(public, 8) == (0, 1) or _multiply(r_point, 8) == (0, 1):
+            return False
         challenge = int.from_bytes(
             hashlib.sha512(r_encoded + public_key + message).digest(), "little"
         ) % L
