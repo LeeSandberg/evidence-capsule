@@ -21,3 +21,4 @@ jobs:
       - run: |
           python verifier/ecap_verify.py examples/minimal.ecap.json
           python verifier/ecap_verify.py examples/signed-alpha2.ecap.json
+          python verifier/ecap_verify.py examples/extensions-alpha3.ecap.json
