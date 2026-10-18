@@ -5,14 +5,22 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import math
+import re
 import sys
 from pathlib import Path
+from urllib.parse import urlparse
 
 ALPHA1 = "evidence-capsule/1.0.0-alpha.1"
 ALPHA2 = "evidence-capsule/1.0.0-alpha.2"
+ALPHA3 = "evidence-capsule/1.0.0-alpha.3"
 REQUIRED = {"format", "capsule_id", "revision", "subject", "claims", "evidence", "policy_results", "integrity"}
 ALLOWED = REQUIRED | {"previous_revision_hash", "assumptions", "contradictions", "model_outputs",
-                      "provenance", "signatures", "approvals", "external_anchors"}
+                      "provenance", "signatures", "approvals", "external_anchors", "extensions"}
+EXTENSION_FIELDS = {"uri", "version", "critical", "payload"}
+SEMVER = re.compile(r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$")
+MAX_EXTENSIONS = 128
+MAX_EXTENSION_PAYLOAD_BYTES = 256 * 1024
 Q = 2**255 - 19
 L = 2**252 + 27742317777372353535851937790883648493
 D = (-121665 * pow(121666, Q - 2, Q)) % Q
@@ -20,12 +28,14 @@ I = pow(2, (Q - 1) // 4, Q)
 
 
 def _canonical(value: object) -> bytes:
-    return json.dumps(value, ensure_ascii=False, separators=(",", ":"), sort_keys=True).encode()
+    return json.dumps(
+        value, ensure_ascii=False, separators=(",", ":"), sort_keys=True, allow_nan=False
+    ).encode()
 
 
 def canonical_payload(capsule: dict) -> bytes:
     excluded = {"integrity"}
-    if capsule.get("format") == ALPHA2:
+    if capsule.get("format") in {ALPHA2, ALPHA3}:
         excluded |= {"signatures", "approvals"}
     return _canonical({key: value for key, value in capsule.items() if key not in excluded})
 
@@ -42,6 +52,58 @@ def signature_message(signature: dict) -> bytes:
 def approval_message(approval: dict) -> bytes:
     statement = {key: value for key, value in approval.items() if key != "signature"}
     return b"evidence-capsule-approval/v1\0" + _canonical(statement)
+
+
+def _finite_json(value: object) -> bool:
+    if value is None or isinstance(value, (str, bool, int)):
+        return True
+    if isinstance(value, float):
+        return math.isfinite(value)
+    if isinstance(value, list):
+        return all(_finite_json(item) for item in value)
+    if isinstance(value, dict):
+        return all(isinstance(key, str) and _finite_json(item) for key, item in value.items())
+    return False
+
+
+def _verify_extensions(value: object) -> list[str]:
+    if not isinstance(value, list):
+        return ["extensions must be an array"]
+    if len(value) > MAX_EXTENSIONS:
+        return [f"extensions must contain at most {MAX_EXTENSIONS} entries"]
+    errors: list[str] = []
+    for index, extension in enumerate(value):
+        label = f"extensions[{index}]"
+        if not isinstance(extension, dict):
+            errors.append(f"{label} must be an object")
+            continue
+        if set(extension) != EXTENSION_FIELDS:
+            errors.append(f"{label} must contain exactly uri, version, critical, payload")
+            continue
+        uri = extension["uri"]
+        parsed = urlparse(uri) if isinstance(uri, str) else None
+        if (not parsed or not parsed.scheme or parsed.scheme.lower() in {"file", "javascript"}
+                or (parsed.scheme.lower() in {"http", "https"} and not parsed.netloc)):
+            errors.append(f"{label}.uri must be an allowed absolute URI")
+        version = extension["version"]
+        if not isinstance(version, str) or not SEMVER.fullmatch(version):
+            errors.append(f"{label}.version must be semantic versioning")
+        if not isinstance(extension["critical"], bool):
+            errors.append(f"{label}.critical must be boolean")
+        payload = extension["payload"]
+        if not _finite_json(payload):
+            errors.append(f"{label}.payload must be finite JSON")
+        else:
+            try:
+                size = len(_canonical(payload))
+            except (TypeError, ValueError):
+                errors.append(f"{label}.payload must be finite JSON")
+            else:
+                if size > MAX_EXTENSION_PAYLOAD_BYTES:
+                    errors.append(
+                        f"{label}.payload exceeds {MAX_EXTENSION_PAYLOAD_BYTES} canonical bytes"
+                    )
+    return errors
 
 
 def _xrecover(y: int) -> int:
@@ -98,8 +160,6 @@ def verify_ed25519(public_key: bytes, message: bytes, signature: bytes) -> bool:
         if scalar >= L:
             return False
         public, r_point = _decode_point(public_key), _decode_point(r_encoded)
-        # Reject identity and other small-order encodings that can make a
-        # cofactored equation true without possession of a private key.
         if _multiply(public, 8) == (0, 1) or _multiply(r_point, 8) == (0, 1):
             return False
         challenge = int.from_bytes(
@@ -147,8 +207,13 @@ def verify(capsule: dict) -> list[str]:
         errors.append("missing fields: " + ", ".join(sorted(missing)))
     if unknown:
         errors.append("unknown fields: " + ", ".join(sorted(unknown)))
-    if capsule.get("format") not in {ALPHA1, ALPHA2}:
+    capsule_format = capsule.get("format")
+    if capsule_format not in {ALPHA1, ALPHA2, ALPHA3}:
         errors.append("unsupported format")
+    if capsule_format in {ALPHA1, ALPHA2} and "extensions" in capsule:
+        errors.append(f"{capsule_format} does not define extensions")
+    if capsule_format == ALPHA3:
+        errors += _verify_extensions(capsule.get("extensions"))
     if not isinstance(capsule.get("revision"), int) or capsule.get("revision", 0) < 1:
         errors.append("revision must be a positive integer")
     for field in ("claims", "evidence", "policy_results"):
@@ -165,12 +230,17 @@ def verify(capsule: dict) -> list[str]:
                     or len(reference["content_hash"]) != 71
                     or not reference["content_hash"].startswith("sha256:")):
                     errors.append(f"evidence[{index}] private reference invalid")
-    integrity, computed = capsule.get("integrity"), content_hash(capsule)
+    try:
+        computed = content_hash(capsule)
+    except (TypeError, ValueError):
+        computed = ""
+        errors.append("capsule must contain finite JSON")
+    integrity = capsule.get("integrity")
     if not isinstance(integrity, dict) or integrity.get("algorithm") != "sha256":
         errors.append("integrity.algorithm must be sha256")
     elif integrity.get("content_hash") != computed:
         errors.append("content hash mismatch")
-    if capsule.get("format") == ALPHA2:
+    if capsule_format in {ALPHA2, ALPHA3}:
         for index, signature in enumerate(capsule.get("signatures", [])):
             errors += _verify_attestation(
                 signature, signature_message, computed, f"signature[{index}]"
@@ -189,8 +259,13 @@ def main() -> int:
         print("usage: ecap_verify.py CAPSULE", file=sys.stderr)
         return 2
     try:
-        capsule = json.loads(Path(sys.argv[1]).read_text())
-    except (OSError, json.JSONDecodeError) as exc:
+        capsule = json.loads(
+            Path(sys.argv[1]).read_text(),
+            parse_constant=lambda value: (_ for _ in ()).throw(
+                ValueError(f"non-finite number {value}")
+            ),
+        )
+    except (OSError, json.JSONDecodeError, ValueError) as exc:
         print(f"invalid capsule: {exc}", file=sys.stderr)
         return 2
     errors = verify(capsule)
