@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://evidencecapsule.org/schema/1.0.0-alpha.2",
+  "$id": "https://evidencecapsule.org/schema/1.0.0-alpha.3",
   "title": "Evidence Capsule",
   "type": "object",
   "required": ["format", "capsule_id", "revision", "subject", "claims", "evidence", "policy_results", "integrity"],
   "properties": {
-    "format": {"enum": ["evidence-capsule/1.0.0-alpha.1", "evidence-capsule/1.0.0-alpha.2"]},
+    "format": {"enum": ["evidence-capsule/1.0.0-alpha.1", "evidence-capsule/1.0.0-alpha.2", "evidence-capsule/1.0.0-alpha.3"]},
     "capsule_id": {"type": "string", "minLength": 1},
     "revision": {"type": "integer", "minimum": 1},
     "previous_revision_hash": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$"},
@@ -27,8 +27,20 @@
     "signatures": {"type": "array", "items": {"$ref": "#/$defs/signature"}, "default": []},
     "approvals": {"type": "array", "items": {"$ref": "#/$defs/approval"}, "default": []},
     "external_anchors": {"type": "array", "items": {"type": "object"}, "default": []},
+    "extensions": {
+      "type": "array",
+      "maxItems": 128,
+      "items": {"$ref": "#/$defs/extension"}
+    },
     "integrity": {"$ref": "#/$defs/integrity"}
   },
+  "allOf": [
+    {
+      "if": {"properties": {"format": {"const": "evidence-capsule/1.0.0-alpha.3"}}},
+      "then": {"required": ["extensions"]},
+      "else": {"not": {"required": ["extensions"]}}
+    }
+  ],
   "$defs": {
     "integrity": {
       "type": "object",
@@ -36,6 +48,17 @@
       "properties": {
         "algorithm": {"const": "sha256"},
         "content_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+      },
+      "additionalProperties": false
+    },
+    "extension": {
+      "type": "object",
+      "required": ["uri", "version", "critical", "payload"],
+      "properties": {
+        "uri": {"type": "string", "format": "uri"},
+        "version": {"type": "string", "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"},
+        "critical": {"type": "boolean"},
+        "payload": {}
       },
       "additionalProperties": false
     },
