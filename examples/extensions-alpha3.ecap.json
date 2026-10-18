@@ -1,0 +1,40 @@
+{
+  "approvals": [],
+  "assumptions": [],
+  "capsule_id": "urn:example:alpha3-extensions",
+  "claims": [],
+  "contradictions": [],
+  "evidence": [],
+  "extensions": [
+    {
+      "critical": false,
+      "payload": {
+        "metrics": {
+          "accuracy": 0.9
+        },
+        "run_id": "fixture-run"
+      },
+      "uri": "https://droidtech.ai/substrate/extensions/ml-run",
+      "version": "1.0.0"
+    }
+  ],
+  "external_anchors": [],
+  "format": "evidence-capsule/1.0.0-alpha.3",
+  "integrity": {
+    "algorithm": "sha256",
+    "content_hash": "sha256:621e42ca716342a6bdbbb2b5f97b7ab1e8368a8fcb2fbf9d48add8b2b083933d"
+  },
+  "model_outputs": [],
+  "policy_results": [],
+  "previous_revision_hash": null,
+  "provenance": {
+    "audit_bundle_digest": "fixture",
+    "audit_head": null,
+    "created_by": "fixture",
+    "producer": "thought-substrate/0.19.0",
+    "workspace_id": "fixture"
+  },
+  "revision": 1,
+  "signatures": [],
+  "subject": "Canonical extension fixture"
+}

@@ -53,3 +53,35 @@ def test_signature_cannot_be_replayed_for_changed_content():
     assert "content hash mismatch" in errors
     assert "signature[0] target or algorithm invalid" in errors
     assert "approval[0] target or algorithm invalid" in errors
+
+
+def test_alpha3_extension_fixture_is_valid_and_integrity_covered():
+    capsule = json.loads((ROOT / "examples/extensions-alpha3.ecap.json").read_text())
+    assert module.verify(capsule) == []
+    capsule["extensions"][0]["payload"]["metrics"]["accuracy"] = 0.1
+    assert "content hash mismatch" in module.verify(capsule)
+
+
+def test_alpha3_rejects_malformed_and_dangerous_extension_envelopes():
+    capsule = json.loads((ROOT / "examples/extensions-alpha3.ecap.json").read_text())
+    capsule["extensions"][0]["uri"] = "javascript:alert(1)"
+    capsule["integrity"]["content_hash"] = module.content_hash(capsule)
+    assert "extensions[0].uri must be an allowed absolute URI" in module.verify(capsule)
+
+    capsule = json.loads((ROOT / "examples/extensions-alpha3.ecap.json").read_text())
+    capsule["extensions"][0]["extra"] = "smuggled"
+    capsule["integrity"]["content_hash"] = module.content_hash(capsule)
+    assert (
+        "extensions[0] must contain exactly uri, version, critical, payload"
+        in module.verify(capsule)
+    )
+
+
+def test_legacy_profiles_reject_extension_smuggling():
+    capsule = json.loads((ROOT / "examples/minimal.ecap.json").read_text())
+    capsule["extensions"] = []
+    capsule["integrity"]["content_hash"] = module.content_hash(capsule)
+    assert (
+        "evidence-capsule/1.0.0-alpha.1 does not define extensions"
+        in module.verify(capsule)
+    )
